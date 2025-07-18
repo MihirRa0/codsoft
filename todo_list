@@ -1,0 +1,112 @@
+import tkinter as tk
+from tkinter import messagebox
+import os
+import pickle
+
+tasks1 = "my_todo_stuff.pickle"
+
+
+def grab_stuff():
+    if os.path.exists(tasks1):
+        with open(tasks1, "rb") as f:
+            return pickle.load(f)
+    return []
+
+
+def stash_stuff(stuff_to_do):
+    with open(tasks1, "wb") as f:
+        pickle.dump(stuff_to_do, f)
+
+class ChillTodoBuddy:
+    def __init__(self, main_window):
+        self.win = main_window
+        self.win.title("to do list")
+
+       
+        self.bg = "#24273a"
+        self.fg = "#f6f7fb"
+        self.accent = "#7dcfff"
+        self.btn_bg = "#393e53"
+        self.btn_fg = "#f4f4f4"
+        self.done_fg = "#8b949e"
+
+        self.win.configure(bg=self.bg)
+        self.stuff_to_do = grab_stuff()
+
+       
+        self.input_corner = tk.Frame(self.win, bg=self.bg)
+        self.input_corner.pack(pady=7)
+        self.taskbox = tk.Entry(self.input_corner, width=30, bg=self.btn_bg, fg=self.fg, insertbackground=self.fg,
+                                relief=tk.FLAT, highlightthickness=1, highlightbackground=self.accent)
+        self.taskbox.pack(side=tk.LEFT, padx=5)
+        self.add_thing = tk.Button(self.input_corner, text="Add It", command=self.toss_in,
+                                   bg=self.btn_bg, fg=self.btn_fg, activebackground=self.accent, relief=tk.FLAT)
+        self.add_thing.pack(side=tk.LEFT)
+
+       
+        self.tasks_spot = tk.Frame(self.win, bg=self.bg)
+        self.tasks_spot.pack()
+        self.toggles = []
+        self.draw_tasks_again()
+
+        
+        self.bye_btn = tk.Button(self.win, text="All Done, Bye!", command=self.save_and_close,
+                                 bg=self.btn_bg, fg=self.btn_fg, activebackground=self.accent, relief=tk.FLAT)
+        self.bye_btn.pack(pady=7)
+
+        self.win.protocol("WM_DELETE_WINDOW", self.save_and_close)
+
+    
+    def draw_tasks_again(self):
+        for widget in self.tasks_spot.winfo_children():
+            widget.destroy()
+        self.toggles = []
+        for idx, todo in enumerate(self.stuff_to_do):
+            done_flag = tk.BooleanVar(value=todo['done'])
+            tickbox = tk.Checkbutton(
+                self.tasks_spot, text=todo['desc'], variable=done_flag,
+                command=lambda i=idx, v=done_flag: self.flip_task(i, v),
+                bg=self.bg,
+                fg=self.done_fg if todo["done"] else self.fg,
+                selectcolor=self.bg,
+                activeforeground=self.accent,
+                activebackground=self.bg,
+                font=("", 12, "overstrike" if todo["done"] else "normal"),
+                relief=tk.FLAT,
+                anchor='w'
+            )
+            tickbox.grid(row=idx, column=0, sticky='w', pady=2)
+            bin_btn = tk.Button(self.tasks_spot, text="Trash", command=lambda i=idx: self.dump_task(i),
+                                bg=self.btn_bg, fg=self.btn_fg,
+                                activebackground=self.accent, relief=tk.FLAT)
+            bin_btn.grid(row=idx, column=1, padx=5)
+            self.toggles.append(done_flag)
+
+    def toss_in(self):
+        idea = self.taskbox.get().strip()
+        if idea:
+            self.stuff_to_do.append({'desc': idea, 'done': False})
+            self.taskbox.delete(0, tk.END)
+            self.draw_tasks_again()
+            stash_stuff(self.stuff_to_do)
+        else:
+            messagebox.showinfo("Heads up!", "Type something first! No empty missions .")
+
+    def flip_task(self, index, flag):
+        self.stuff_to_do[index]['done'] = flag.get()
+        self.draw_tasks_again()
+        stash_stuff(self.stuff_to_do)
+
+    def dump_task(self, index):
+        del self.stuff_to_do[index]
+        self.draw_tasks_again()
+        stash_stuff(self.stuff_to_do)
+
+    def save_and_close(self):
+        stash_stuff(self.stuff_to_do)
+        self.win.destroy()
+
+if __name__ == "__main__":
+    big_window = tk.Tk()
+    my_buddy = ChillTodoBuddy(big_window)
+    big_window.mainloop()
